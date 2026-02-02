@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <StartupObject>Day_29_M1_Practice.UserInterface</StartupObject>
+    <StartupObject>CAP2025.Day_31_GenericsPractice.BikeMain</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
