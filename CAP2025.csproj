@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <StartupObject>CAP2025.Day_31_GenericsPractice.BikeMain</StartupObject>
+    <StartupObject>CAP2025.Day_32_M1Practice.StreamBuzzMain</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
