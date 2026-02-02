@@ -1,37 +1,46 @@
-﻿using Microsoft.VisualStudio.TestPlatform.TestHost;
-using NUnit.Framework;
+﻿using NUnit.Framework;
+using BankAccountApp;
 using System;
 
-[TestFixture]
-public class UnitTest
+namespace BankAccountApp.Tests
 {
-    [Test]
-    public void Test_Deposit_ValidAmount()
+    [TestFixture]
+    public class UnitTest
     {
-        Program account = new Program(1000);
-        account.Deposit(500);
-        Assert.AreEqual(1500, account.Balance);
-    }
+        [Test]
+        public void Test_Deposit_ValidAmount()
+        {
+            Program acc = new Program(1000);
+            acc.Deposit(500);
 
-    [Test]
-    public void Test_Deposit_NegativeAmount()
-    {
-        Program account = new Program(1000);
-        Assert.Throws<Exception>(() => account.Deposit(-100));
-    }
+            Assert.That(acc.Balance, Is.EqualTo(1500));
+        }
 
-    [Test]
-    public void Test_Withdraw_ValidAmount()
-    {
-        Program account = new Program(1000);
-        account.Withdraw(400);
-        Assert.AreEqual(600, account.Balance);
-    }
+        [Test]
+        public void Test_Deposit_NegativeAmount()
+        {
+            Program acc = new Program(1000);
 
-    [Test]
-    public void Test_Withdraw_InsufficientFunds()
-    {
-        Program account = new Program(500);
-        Assert.Throws<Exception>(() => account.Withdraw(800));
+            var ex = Assert.Throws<Exception>(() => acc.Deposit(-100));
+            Assert.That(ex.Message, Is.EqualTo("Deposit amount cannot be negative"));
+        }
+
+        [Test]
+        public void Test_Withdraw_ValidAmount()
+        {
+            Program acc = new Program(1000);
+            acc.Withdraw(400);
+
+            Assert.That(acc.Balance, Is.EqualTo(600));
+        }
+
+        [Test]
+        public void Test_Withdraw_InsufficientFunds()
+        {
+            Program acc = new Program(500);
+
+            var ex = Assert.Throws<Exception>(() => acc.Withdraw(800));
+            Assert.That(ex.Message, Is.EqualTo("Insufficient funds."));
+        }
     }
 }
