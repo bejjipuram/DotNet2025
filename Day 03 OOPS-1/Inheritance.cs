@@ -6,6 +6,8 @@ using System;
 
 public class Person
 {
+    private int Marks;
+    private int Birthday;
     public int Id { get; set; }
     public string Name { get; set; }
     public int Age { get; set; }
