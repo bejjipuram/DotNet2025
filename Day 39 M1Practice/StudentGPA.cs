@@ -4,79 +4,74 @@ using System.Linq;
 
 namespace CAP2025.Day_39_M1Practice
 {
-    // ===============================
-    // 1. Base Interfaces
-    // ===============================
+    // =============================
+    // Base Interfaces
+    // =============================
     public interface IStudent
     {
         int StudentId { get; }
-        string Name { get; }
+        string? Name { get; }
         int Semester { get; }
     }
 
     public interface ICourse
     {
-        string CourseCode { get; }
-        string Title { get; }
+        string? CourseCode { get; }
+        string? Title { get; }
         int MaxCapacity { get; }
         int Credits { get; }
     }
 
-    // Optional prerequisite contract
-    public interface IPrerequisiteCourse
-    {
-        int RequiredSemester { get; }
-    }
-
-    // ===============================
-    // 2. Generic Enrollment System
-    // ===============================
+    // =============================
+    // Generic Enrollment System
+    // =============================
     public class EnrollmentSystem<TStudent, TCourse>
         where TStudent : IStudent
         where TCourse : ICourse
     {
-        private readonly Dictionary<TCourse, List<TStudent>> _enrollments = new();
+        // Dictionary: Course → List of students
+        private Dictionary<TCourse, List<TStudent>> _enrollments = new();
 
-        public bool EnrollStudent(TStudent student, TCourse course, out string message)
+        public bool EnrollStudent(TStudent student, TCourse course)
         {
             if (!_enrollments.ContainsKey(course))
                 _enrollments[course] = new List<TStudent>();
 
             var students = _enrollments[course];
 
-            // Capacity check
+            // Rule 1: Capacity check
             if (students.Count >= course.MaxCapacity)
             {
-                message = "Enrollment failed: Course at full capacity.";
+                Console.WriteLine("Enrollment failed: Course at full capacity.");
                 return false;
             }
 
-            // Duplicate enrollment check
+            // Rule 2: Already enrolled check
             if (students.Any(s => s.StudentId == student.StudentId))
             {
-                message = "Enrollment failed: Student already enrolled.";
+                Console.WriteLine("Enrollment failed: Student already enrolled.");
                 return false;
             }
 
-            // Prerequisite check (if course has prerequisite)
-            if (course is IPrerequisiteCourse prereq)
+            // Rule 3: Semester prerequisite check
+            if (course is LabCourse lab)
             {
-                if (student.Semester < prereq.RequiredSemester)
+                if (student.Semester < lab.RequiredSemester)
                 {
-                    message = $"Enrollment failed: Requires semester {prereq.RequiredSemester}.";
+                    Console.WriteLine("Enrollment failed: Semester prerequisite not met.");
                     return false;
                 }
             }
 
             students.Add(student);
-            message = "Enrollment successful.";
+            Console.WriteLine("Enrollment successful.");
             return true;
         }
 
         public IReadOnlyList<TStudent> GetEnrolledStudents(TCourse course)
         {
-            if (_enrollments.TryGetValue(course, out var students))
-                return students.AsReadOnly();
+            if (_enrollments.ContainsKey(course))
+                return _enrollments[course].AsReadOnly();
 
             return new List<TStudent>().AsReadOnly();
         }
@@ -90,46 +85,41 @@ namespace CAP2025.Day_39_M1Practice
 
         public int CalculateStudentWorkload(TStudent student)
         {
-            return GetStudentCourses(student).Sum(c => c.Credits);
+            return GetStudentCourses(student)
+                .Sum(c => c.Credits);
         }
     }
 
-    // ===============================
-    // 3. Specialized Implementations
-    // ===============================
+    // =============================
+    // Specialized Implementations
+    // =============================
     public class EngineeringStudent : IStudent
     {
         public int StudentId { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int Semester { get; set; }
-        public string Specialization { get; set; }
-
-        public override string ToString()
-            => $"{Name} (Sem {Semester}, {Specialization})";
+        public string? Specialization { get; set; }
     }
 
-    public class LabCourse : ICourse, IPrerequisiteCourse
+    public class LabCourse : ICourse
     {
-        public string CourseCode { get; set; }
-        public string Title { get; set; }
+        public string? CourseCode { get; set; }
+        public string? Title { get; set; }
         public int MaxCapacity { get; set; }
         public int Credits { get; set; }
-        public string LabEquipment { get; set; }
+        public string? LabEquipment { get; set; }
         public int RequiredSemester { get; set; }
-
-        public override string ToString()
-            => $"{CourseCode} - {Title}";
     }
 
-    // ===============================
-    // 4. Generic GradeBook
-    // ===============================
+    // =============================
+    // Generic GradeBook
+    // =============================
     public class GradeBook<TStudent, TCourse>
         where TStudent : IStudent
         where TCourse : ICourse
     {
-        private readonly EnrollmentSystem<TStudent, TCourse> _enrollmentSystem;
-        private readonly Dictionary<(int studentId, string courseCode), double> _grades = new();
+        private Dictionary<(TStudent, TCourse), double> _grades = new();
+        private EnrollmentSystem<TStudent, TCourse> _enrollmentSystem;
 
         public GradeBook(EnrollmentSystem<TStudent, TCourse> enrollmentSystem)
         {
@@ -139,110 +129,434 @@ namespace CAP2025.Day_39_M1Practice
         public void AddGrade(TStudent student, TCourse course, double grade)
         {
             if (grade < 0 || grade > 100)
-                throw new ArgumentException("Grade must be between 0 and 100.");
+                throw new ArgumentException("Grade must be between 0 and 100");
 
-            var enrolledCourses = _enrollmentSystem.GetStudentCourses(student);
-            if (!enrolledCourses.Any(c => c.CourseCode == course.CourseCode))
-                throw new InvalidOperationException("Student not enrolled in course.");
+            if (!_enrollmentSystem.GetEnrolledStudents(course)
+                .Any(s => s.StudentId == student.StudentId))
+                throw new InvalidOperationException("Student not enrolled in course");
 
-            _grades[(student.StudentId, course.CourseCode)] = grade;
+            _grades[(student, course)] = grade;
         }
 
         public double? CalculateGPA(TStudent student)
         {
-            var courses = _enrollmentSystem.GetStudentCourses(student).ToList();
-            if (!courses.Any()) return null;
+            var studentGrades = _grades
+                .Where(g => g.Key.Item1.StudentId == student.StudentId);
 
-            double totalWeighted = 0;
+            if (!studentGrades.Any())
+                return null;
+
+            double totalPoints = 0;
             int totalCredits = 0;
 
-            foreach (var course in courses)
+            foreach (var entry in studentGrades)
             {
-                if (_grades.TryGetValue((student.StudentId, course.CourseCode), out var grade))
-                {
-                    totalWeighted += grade * course.Credits;
-                    totalCredits += course.Credits;
-                }
+                var course = entry.Key.Item2;
+                totalPoints += entry.Value * course.Credits;
+                totalCredits += course.Credits;
             }
 
-            if (totalCredits == 0) return null;
-
-            return totalWeighted / totalCredits;
+            return totalPoints / totalCredits;
         }
 
         public (TStudent student, double grade)? GetTopStudent(TCourse course)
         {
-            var students = _enrollmentSystem.GetEnrolledStudents(course);
+            var courseGrades = _grades
+                .Where(g => g.Key.Item2.Equals(course));
 
-            var gradedStudents = students
-                .Where(s => _grades.ContainsKey((s.StudentId, course.CourseCode)))
-                .Select(s => (student: s,
-                              grade: _grades[(s.StudentId, course.CourseCode)]))
-                .OrderByDescending(g => g.grade)
-                .FirstOrDefault();
-
-            if (gradedStudents.student == null)
+            if (!courseGrades.Any())
                 return null;
 
-            return gradedStudents;
+            var top = courseGrades
+                .OrderByDescending(g => g.Value)
+                .First();
+
+            return (top.Key.Item1, top.Value);
         }
     }
 
-    // ===============================
-    // 5. TEST SCENARIO
-    // ===============================
-    public class StudentGPA
+    // =============================
+    // QUESTION CLASS
+    // =============================
+    public class UniversityCourseRegistrationSystem
     {
-        public static void Main()
+        public static void Run()
         {
             var enrollment = new EnrollmentSystem<EngineeringStudent, LabCourse>();
             var gradeBook = new GradeBook<EngineeringStudent, LabCourse>(enrollment);
 
-            // Students
-            var s1 = new EngineeringStudent { StudentId = 1, Name = "Indra", Semester = 3, Specialization = "Cloud" };
-            var s2 = new EngineeringStudent { StudentId = 2, Name = "Rahul", Semester = 2, Specialization = "AI" };
-            var s3 = new EngineeringStudent { StudentId = 3, Name = "Sneha", Semester = 4, Specialization = "Data" };
+            var students = new List<EngineeringStudent>();
+            var courses = new List<LabCourse>();
 
-            // Courses
-            var c1 = new LabCourse
+            // =============================
+            // DEFAULT HARDCODED DATA
+            // =============================
+
+            students.Add(new EngineeringStudent
+            {
+                StudentId = 1,
+                Name = "Michael",
+                Semester = 3,
+                Specialization = "Computer Science"
+            });
+
+            students.Add(new EngineeringStudent
+            {
+                StudentId = 2,
+                Name = "Elijah",
+                Semester = 5,
+                Specialization = "Electronics"
+            });
+
+            courses.Add(new LabCourse
             {
                 CourseCode = "CS301",
-                Title = "Advanced Cloud Lab",
-                MaxCapacity = 2,
+                Title = "Data Structures Lab",
+                MaxCapacity = 3,
                 Credits = 4,
-                RequiredSemester = 3
-            };
+                RequiredSemester = 3,
+                LabEquipment = "Computers"
+            });
 
-            var c2 = new LabCourse
+            courses.Add(new LabCourse
             {
-                CourseCode = "CS201",
-                Title = "AI Fundamentals Lab",
-                MaxCapacity = 1,
+                CourseCode = "EC501",
+                Title = "Microprocessor Lab",
+                MaxCapacity = 2,
                 Credits = 3,
-                RequiredSemester = 2
-            };
+                RequiredSemester = 5,
+                LabEquipment = "Microcontroller Kits"
+            });
 
-            // Enrollment Tests
-            Console.WriteLine(enrollment.EnrollStudent(s1, c1, out var msg1) + " - " + msg1);
-            Console.WriteLine(enrollment.EnrollStudent(s2, c1, out var msg2) + " - " + msg2); // fail (semester)
-            Console.WriteLine(enrollment.EnrollStudent(s3, c1, out var msg3) + " - " + msg3);
-            Console.WriteLine(enrollment.EnrollStudent(s1, c1, out var msg4) + " - " + msg4); // duplicate
-            Console.WriteLine(enrollment.EnrollStudent(s2, c2, out var msg5) + " - " + msg5);
-            Console.WriteLine(enrollment.EnrollStudent(s3, c2, out var msg6) + " - " + msg6); // capacity fail
+            bool exit = false;
 
-            // Assign Grades
-            gradeBook.AddGrade(s1, c1, 85);
-            gradeBook.AddGrade(s3, c1, 92);
-            gradeBook.AddGrade(s2, c2, 88);
+            while (!exit)
+            {
+                Console.WriteLine("\n====== UNIVERSITY COURSE REGISTRATION SYSTEM ======");
+                Console.WriteLine("1. Add Student");
+                Console.WriteLine("2. Add Course");
+                Console.WriteLine("3. View All Students");
+                Console.WriteLine("4. View All Courses");
+                Console.WriteLine("5. Enroll Student");
+                Console.WriteLine("6. Assign Grade");
+                Console.WriteLine("7. Calculate GPA");
+                Console.WriteLine("8. Show Top Student in Course");
+                Console.WriteLine("9. Exit");
 
-            // GPA
-            Console.WriteLine($"\nGPA of {s1.Name}: {gradeBook.CalculateGPA(s1)}");
-            Console.WriteLine($"GPA of {s3.Name}: {gradeBook.CalculateGPA(s3)}");
+                Console.Write("Select an option: ");
+                string userChoice = Console.ReadLine() ?? string.Empty;
 
-            // Top Student
-            var top = gradeBook.GetTopStudent(c1);
-            if (top.HasValue)
-                Console.WriteLine($"\nTop student in {c1.Title}: {top.Value.student.Name} with {top.Value.grade}");
+                try
+                {
+                    switch (userChoice)
+                    {
+                        case "1":
+
+                            Console.Write("Enter Student ID: ");
+                            string? studentIdInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(studentIdInput))
+                            {
+                                Console.WriteLine("Invalid input. Student ID cannot be empty.");
+                                break;
+                            }
+                            int studentId = int.Parse(studentIdInput);
+
+                            Console.Write("Enter Student Name: ");
+                            string studentName = Console.ReadLine() ?? string.Empty;
+
+                            Console.Write("Enter Semester: ");
+                            string? semesterInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(semesterInput))
+                            {
+                                Console.WriteLine("Invalid input. Semester cannot be empty.");
+                                break;
+                            }
+                            int studentSemester = int.Parse(semesterInput);
+
+                            Console.Write("Enter Specialization: ");
+                            string studentSpecialization = Console.ReadLine() ?? string.Empty;
+
+                            students.Add(new EngineeringStudent
+                            {
+                                StudentId = studentId,
+                                Name = studentName,
+                                Semester = studentSemester,
+                                Specialization = studentSpecialization
+                            });
+
+                            Console.WriteLine("Student added successfully.");
+                            break;
+
+                        case "2":
+
+                            Console.Write("Enter Course Code: ");
+                            string? courseCodeInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(courseCodeInput))
+                            {
+                                Console.WriteLine("Invalid input. Course code cannot be empty.");
+                                break;
+                            }
+                            string courseCode = courseCodeInput;
+
+                            Console.Write("Enter Course Title: ");
+                            string courseTitle = Console.ReadLine() ?? string.Empty;
+
+                            Console.Write("Enter Maximum Capacity: ");
+                            string? maxCapacityInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(maxCapacityInput))
+                            {
+                                Console.WriteLine("Invalid input. Maximum capacity cannot be empty.");
+                                break;
+                            }
+                            int maximumCapacity = int.Parse(maxCapacityInput);
+
+                            Console.Write("Enter Course Credits: ");
+                            string? courseCreditsInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(courseCreditsInput))
+                            {
+                                Console.WriteLine("Invalid input. Course credits cannot be empty.");
+                                break;
+                            }
+                            int courseCredits = int.Parse(courseCreditsInput);
+
+                            Console.Write("Enter Required Semester: ");
+                            string? requiredSemesterInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(requiredSemesterInput))
+                            {
+                                Console.WriteLine("Invalid input. Required semester cannot be empty.");
+                                break;
+                            }
+                            int requiredSemester = int.Parse(requiredSemesterInput);
+
+                            Console.Write("Enter Lab Equipment: ");
+                            string labEquipment = Console.ReadLine() ?? string.Empty;
+
+                            courses.Add(new LabCourse
+                            {
+                                CourseCode = courseCode,
+                                Title = courseTitle,
+                                MaxCapacity = maximumCapacity,
+                                Credits = courseCredits,
+                                RequiredSemester = requiredSemester,
+                                LabEquipment = labEquipment
+                            });
+
+                            Console.WriteLine("Course added successfully.");
+                            break;
+
+                        case "3":
+
+                            if (students.Count == 0)
+                            {
+                                Console.WriteLine("No students available.");
+                                break;
+                            }
+
+                            Console.WriteLine("\n--- Registered Students ---");
+                            foreach (var existingStudent in students)
+                            {
+                                Console.WriteLine(
+                                    $"ID: {existingStudent.StudentId} | " +
+                                    $"Name: {existingStudent.Name} | " +
+                                    $"Semester: {existingStudent.Semester} | " +
+                                    $"Specialization: {existingStudent.Specialization}");
+                            }
+                            break;
+
+                        case "4":
+
+                            if (courses.Count == 0)
+                            {
+                                Console.WriteLine("No courses available.");
+                                break;
+                            }
+
+                            Console.WriteLine("\n--- Available Courses ---");
+                            foreach (var availableCourse in courses)
+                            {
+                                Console.WriteLine(
+                                    $"Code: {availableCourse.CourseCode} | " +
+                                    $"Title: {availableCourse.Title} | " +
+                                    $"Credits: {availableCourse.Credits} | " +
+                                    $"Capacity: {availableCourse.MaxCapacity}");
+                            }
+                            break;
+
+                        case "5":
+
+                            if (students.Count == 0 || courses.Count == 0)
+                            {
+                                Console.WriteLine("Students or courses are not available.");
+                                break;
+                            }
+
+                            Console.WriteLine("\nAvailable Students:");
+                            foreach (var availableStudent in students)
+                                Console.WriteLine($"ID: {availableStudent.StudentId} - {availableStudent.Name}");
+
+                            Console.Write("\nEnter Student ID to Enroll: ");
+                            string? enrollStudentIdInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(enrollStudentIdInput))
+                            {
+                                Console.WriteLine("Invalid input. Student ID cannot be empty.");
+                                break;
+                            }
+                            studentId = int.Parse(enrollStudentIdInput);
+
+                            Console.WriteLine("\nAvailable Courses:");
+                            foreach (var availableCourse in courses)
+                                Console.WriteLine($"{availableCourse.CourseCode} - {availableCourse.Title}");
+
+                            Console.Write("\nEnter Course Code to Enroll: ");
+                            courseCode = Console.ReadLine() ?? string.Empty;
+
+                            EngineeringStudent? selectedStudent =
+                                students.FirstOrDefault(s => s.StudentId == studentId);
+
+                            LabCourse? selectedCourse =
+                                courses.FirstOrDefault(c => c.CourseCode == courseCode);
+
+                            if (selectedStudent != null && selectedCourse != null)
+                                enrollment.EnrollStudent(selectedStudent, selectedCourse);
+                            else
+                                Console.WriteLine("Invalid student or course selection.");
+
+                            break;
+
+                        case "6":
+
+                            Console.WriteLine("\nAvailable Students:");
+                            foreach (var availableStudent in students)
+                                Console.WriteLine($"ID: {availableStudent.StudentId} - {availableStudent.Name}");
+
+                            Console.Write("Enter Student ID: ");
+                            string? gradeStudentIdInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(gradeStudentIdInput))
+                            {
+                                Console.WriteLine("Invalid input. Student ID cannot be empty.");
+                                break;
+                            }
+                            studentId = int.Parse(gradeStudentIdInput);
+
+                            Console.WriteLine("\nAvailable Courses:");
+                            foreach (var availableCourse in courses)
+                                Console.WriteLine($"{availableCourse.CourseCode} - {availableCourse.Title}");
+
+                            Console.Write("Enter Course Code: ");
+                            string? inputCourseCode = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(inputCourseCode))
+                            {
+                                Console.WriteLine("Invalid input. Course code cannot be empty.");
+                                break;
+                            }
+                            courseCode = inputCourseCode;
+
+                            Console.Write("Enter Grade (0-100): ");
+                            string? gradeInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(gradeInput))
+                            {
+                                Console.WriteLine("Invalid input. Grade cannot be empty.");
+                                break;
+                            }
+                            double gradeValue = double.Parse(gradeInput);
+
+                            selectedStudent =
+                                students.FirstOrDefault(s => s.StudentId == studentId);
+
+                            selectedCourse =
+                                courses.FirstOrDefault(c => c.CourseCode == courseCode);
+
+                            if (selectedStudent != null && selectedCourse != null)
+                                gradeBook.AddGrade(selectedStudent, selectedCourse, gradeValue);
+                            else
+                                Console.WriteLine("Invalid student or course selection.");
+
+                            break;
+
+                        case "7":
+
+                            Console.WriteLine("\nAvailable Students:");
+                            foreach (var availableStudent in students)
+                                Console.WriteLine($"ID: {availableStudent.StudentId} - {availableStudent.Name}");
+
+                            Console.Write("Enter Student ID: ");
+                            string? gpaStudentIdInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(gpaStudentIdInput))
+                            {
+                                Console.WriteLine("Invalid input. Student ID cannot be empty.");
+                                break;
+                            }
+                            studentId = int.Parse(gpaStudentIdInput);
+
+                            selectedStudent =
+                                students.FirstOrDefault(s => s.StudentId == studentId);
+
+                            if (selectedStudent != null)
+                            {
+                                double? calculatedGpa = gradeBook.CalculateGPA(selectedStudent);
+
+                                Console.WriteLine(calculatedGpa.HasValue
+                                    ? $"Calculated GPA: {calculatedGpa.Value:F2}"
+                                    : "No grades available for this student.");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Student not found.");
+                            }
+
+                            break;
+
+                        case "8":
+
+                            Console.WriteLine("\nAvailable Courses:");
+                            foreach (var availableCourse in courses)
+                                Console.WriteLine($"{availableCourse.CourseCode} - {availableCourse.Title}");
+
+                            Console.Write("Enter Course Code: ");
+                            string? topCourseCodeInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(topCourseCodeInput))
+                            {
+                                Console.WriteLine("Invalid input. Course code cannot be empty.");
+                                break;
+                            }
+                            courseCode = topCourseCodeInput;
+
+                            selectedCourse =
+                                courses.FirstOrDefault(c => c.CourseCode == courseCode);
+
+                            if (selectedCourse != null)
+                            {
+                                var topPerformer = gradeBook.GetTopStudent(selectedCourse);
+
+                                if (topPerformer.HasValue)
+                                    Console.WriteLine(
+                                        $"Top Student: {topPerformer.Value.student.Name} - {topPerformer.Value.grade}");
+                                else
+                                    Console.WriteLine("No grades available for this course.");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Course not found.");
+                            }
+
+                            break;
+
+                        case "9":
+                            exit = true;
+                            Console.WriteLine("Exiting the system...");
+                            break;
+
+                        default:
+                            Console.WriteLine("Invalid option selected.");
+                            break;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine($"Error: {exception.Message}");
+                }
+            }
+
         }
     }
 }

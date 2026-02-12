@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace CAP2025.Day_39_M1Practice
 {
-    // ===============================
-    // 1. Base Product Interface
-    // ===============================
+    // =========================
+    // Base Product Interface
+    // =========================
     public interface IProduct
     {
         int Id { get; }
-        string Name { get; set; }
+        string? Name { get; }
         decimal Price { get; set; }
         Category Category { get; }
     }
@@ -23,259 +23,313 @@ namespace CAP2025.Day_39_M1Practice
         Groceries
     }
 
-    // ===============================
-    // 2. Generic Repository
-    // ===============================
+    // =========================
+    // Generic Product Repository
+    // =========================
     public class ProductRepository<T> where T : class, IProduct
     {
-        private readonly List<T> _products = new List<T>();
+        private List<T> _products = new List<T>();
 
+        // Add product with validation
         public void AddProduct(T product)
         {
             if (product == null)
-                throw new ArgumentNullException(nameof(product));
-
-            if (string.IsNullOrWhiteSpace(product.Name))
-                throw new ArgumentException("Product name cannot be empty.");
-
-            if (product.Price <= 0)
-                throw new ArgumentException("Price must be positive.");
+                throw new ArgumentNullException("Product cannot be null");
 
             if (_products.Any(p => p.Id == product.Id))
-                throw new InvalidOperationException("Product ID must be unique.");
+                throw new InvalidOperationException("Product ID must be unique");
+
+            if (string.IsNullOrWhiteSpace(product.Name))
+                throw new ArgumentException("Product name cannot be empty");
+
+            if (product.Price <= 0)
+                throw new ArgumentException("Price must be positive");
 
             _products.Add(product);
         }
 
+        // Find products using predicate
         public IEnumerable<T> FindProducts(Func<T, bool> predicate)
         {
-            if (predicate == null)
-                throw new ArgumentNullException(nameof(predicate));
-
             return _products.Where(predicate);
         }
 
+        // Calculate total inventory value
         public decimal CalculateTotalValue()
         {
             return _products.Sum(p => p.Price);
         }
 
-        public List<T> GetAll() => _products;
-    }
-
-    // ===============================
-    // 3. Electronic Product
-    // ===============================
-    public class ElectronicProduct : IProduct
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public decimal Price { get; set; }
-        public Category Category => Category.Electronics;
-
-        public int WarrantyMonths { get; set; }
-        public string Brand { get; set; }
-
-        public override string ToString()
+        // Expose products safely
+        public List<T> GetAllProducts()
         {
-            return $"{Name} ({Brand}) - ₹{Price}";
+            return _products;
         }
     }
 
-    // ===============================
-    // 4. Clothing Product
-    // ===============================
-    public class ClothingProduct : IProduct
+    // =========================
+    // Electronic Product
+    // =========================
+    public class ElectronicProduct : IProduct
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public decimal Price { get; set; }
-        public Category Category => Category.Clothing;
-
-        public string Size { get; set; }
+        public Category Category => Category.Electronics;
+        public int WarrantyMonths { get; set; }
+        public string? Brand { get; set; }
     }
 
-    // ===============================
-    // 5. Discount Wrapper
-    // ===============================
+    // =========================
+    // Discount Wrapper
+    // =========================
     public class DiscountedProduct<T> where T : IProduct
     {
-        private readonly T _product;
-        private readonly decimal _discountPercentage;
+        private T _product;
+        private decimal _discountPercentage;
 
         public DiscountedProduct(T product, decimal discountPercentage)
         {
             if (product == null)
-                throw new ArgumentNullException(nameof(product));
+                throw new ArgumentNullException("Product cannot be null");
 
             if (discountPercentage < 0 || discountPercentage > 100)
-                throw new ArgumentException("Discount must be between 0 and 100.");
+                throw new ArgumentException("Discount must be between 0 and 100");
 
             _product = product;
             _discountPercentage = discountPercentage;
         }
 
+        // Calculate discounted price
         public decimal DiscountedPrice =>
             _product.Price * (1 - _discountPercentage / 100);
 
         public override string ToString()
         {
-            return $"{_product.Name} | Original: ₹{_product.Price} | " +
-                   $"Discount: {_discountPercentage}% | Final: ₹{DiscountedPrice}";
+            return $"{_product.Name} | Original: {_product.Price} | " +
+                   $"Discount: {_discountPercentage}% | Final: {DiscountedPrice}";
         }
     }
 
-    // ===============================
-    // 6. Inventory Manager
-    // ===============================
+    // =========================
+    // Inventory Manager
+    // =========================
     public class InventoryManager
     {
-        public void ProcessProducts<T>(IEnumerable<T> products)
-            where T : IProduct
+        // Process any product collection
+        public void ProcessProducts<T>(IEnumerable<T> products) where T : IProduct
         {
             Console.WriteLine("\n--- Product List ---");
-            foreach (var p in products)
-                Console.WriteLine($"{p.Name} - ₹{p.Price}");
+            foreach (var product in products)
+                Console.WriteLine($"{product.Name} - {product.Price}");
 
-            var mostExpensive = products
-                .OrderByDescending(p => p.Price)
-                .FirstOrDefault();
-
-            if (mostExpensive != null)
-                Console.WriteLine($"\nMost Expensive Product: {mostExpensive.Name}");
+            var expensive = products.OrderByDescending(p => p.Price).FirstOrDefault();
+            if (expensive != null)
+                Console.WriteLine($"Most Expensive: {expensive.Name}");
 
             Console.WriteLine("\n--- Grouped by Category ---");
-            var grouped = products.GroupBy(p => p.Category);
-
-            foreach (var group in grouped)
+            foreach (var group in products.GroupBy(p => p.Category))
             {
-                Console.WriteLine($"\n{group.Key}:");
+                Console.WriteLine(group.Key);
                 foreach (var item in group)
                     Console.WriteLine($"  {item.Name}");
             }
 
-            Console.WriteLine("\n--- 10% Discount on Electronics > ₹500 ---");
-            foreach (var p in products.Where(p =>
-                         p.Category == Category.Electronics && p.Price > 500))
+            Console.WriteLine("\n--- Discounted Electronics (>500) ---");
+            foreach (var p in products
+                .Where(p => p.Category == Category.Electronics && p.Price > 500))
             {
-                var discounted = new DiscountedProduct<IProduct>(p, 10);
+                var discounted = new DiscountedProduct<T>(p, 10);
                 Console.WriteLine(discounted);
             }
         }
 
-        public void UpdatePrices<T>(
-            List<T> products,
-            Func<T, decimal> priceAdjuster)
+        // Bulk price update
+        public void UpdatePrices<T>(List<T> products, Func<T, decimal> priceAdjuster)
             where T : IProduct
         {
             foreach (var product in products)
             {
                 try
                 {
-                    var newPrice = priceAdjuster(product);
-
+                    decimal newPrice = priceAdjuster(product);
                     if (newPrice <= 0)
-                        throw new ArgumentException("Adjusted price must be positive.");
+                        throw new Exception("Invalid price");
 
                     product.Price = newPrice;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        $"Error updating {product.Name}: {ex.Message}");
+                    Console.WriteLine($"Failed to update {product.Name}: {ex.Message}");
                 }
             }
         }
     }
 
-    // ===============================
-    // 7. TEST SCENARIO
-    // ===============================
-    public class Program
+    // =========================
+    // QUESTION CLASS
+    // =========================
+    public class EcomerceInventory
     {
         public static void Main()
         {
-            var electronicsRepo = new ProductRepository<ElectronicProduct>();
-            var clothingRepo = new ProductRepository<ClothingProduct>();
+            var repository = new ProductRepository<ElectronicProduct>();
+            var manager = new InventoryManager();
+            bool exit = false;
 
-            // Add products
-            electronicsRepo.AddProduct(new ElectronicProduct
+            // =========================
+            // DEFAULT HARDCODED PRODUCTS
+            // =========================
+            repository.AddProduct(new ElectronicProduct
             {
                 Id = 1,
                 Name = "Laptop",
-                Price = 900,
+                Price = 75000,
                 Brand = "Dell",
                 WarrantyMonths = 24
             });
 
-            electronicsRepo.AddProduct(new ElectronicProduct
+            repository.AddProduct(new ElectronicProduct
             {
                 Id = 2,
                 Name = "Smartphone",
-                Price = 1200,
+                Price = 45000,
                 Brand = "Samsung",
                 WarrantyMonths = 12
             });
 
-            clothingRepo.AddProduct(new ClothingProduct
+            repository.AddProduct(new ElectronicProduct
             {
                 Id = 3,
-                Name = "T-Shirt",
-                Price = 500,
-                Size = "M"
-            });
-
-            clothingRepo.AddProduct(new ClothingProduct
-            {
-                Id = 4,
-                Name = "Jacket",
-                Price = 1500,
-                Size = "L"
-            });
-
-            electronicsRepo.AddProduct(new ElectronicProduct
-            {
-                Id = 5,
                 Name = "Headphones",
-                Price = 700,
+                Price = 3000,
                 Brand = "Sony",
-                WarrantyMonths = 18
+                WarrantyMonths = 6
             });
 
-            // Find by Brand
-            Console.WriteLine("\n--- Samsung Products ---");
-            var samsung = electronicsRepo.FindProducts(p => p.Brand == "Samsung");
-            foreach (var item in samsung)
-                Console.WriteLine(item);
+            while (!exit)
+            {
+                Console.WriteLine("\n1. Add Electronic Product");
+                Console.WriteLine("2. View All Products");
+                Console.WriteLine("3. Find Product by Brand");
+                Console.WriteLine("4. Process Inventory");
+                Console.WriteLine("5. Update Prices (+10%)");
+                Console.WriteLine("6. Total Inventory Value");
+                Console.WriteLine("7. Exit");
 
-            // Total Value
-            Console.WriteLine("\nTotal Electronics Value: ₹" +
-                electronicsRepo.CalculateTotalValue());
+                Console.Write("Enter choice: ");
+                string? choice = Console.ReadLine();
 
-            // Discount Example
-            var discountExample = new DiscountedProduct<ElectronicProduct>(
-                electronicsRepo.GetAll().First(), 15);
+                try
+                {
+                    switch (choice)
+                    {
+                        case "1":
+                            Console.Write("Id: ");
+                            string? idInput = Console.ReadLine();
+                            if (idInput == null || string.IsNullOrWhiteSpace(idInput) || !int.TryParse(idInput, out int id))
+                            {
+                                Console.WriteLine("Invalid Id input.");
+                                break;
+                            }
 
-            Console.WriteLine("\nDiscount Example:");
-            Console.WriteLine(discountExample);
+                            Console.Write("Name: ");
+                            string? nameInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(nameInput))
+                            {
+                                Console.WriteLine("Invalid Name input.");
+                                break;
+                            }
+                            string name = nameInput;
 
-            // Mixed Collection
-            var mixed = new List<IProduct>();
-            mixed.AddRange(electronicsRepo.GetAll());
-            mixed.AddRange(clothingRepo.GetAll());
+                            Console.Write("Price: ");
+                            string? priceInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(priceInput) || !decimal.TryParse(priceInput, out decimal price))
+                            {
+                                Console.WriteLine("Invalid Price input.");
+                                break;
+                            }
 
-            var manager = new InventoryManager();
-            manager.ProcessProducts(mixed);
+                            Console.Write("Brand: ");
+                            string? brandInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(brandInput))
+                            {
+                                Console.WriteLine("Invalid Brand input.");
+                                break;
+                            }
+                            string brand = brandInput;
 
-            // Bulk Price Update (10% increase)
-            manager.UpdatePrices(mixed.ToList(), p => p.Price * 1.10m);
+                            Console.Write("Warranty Months: ");
+                            string? warrantyInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(warrantyInput) || !int.TryParse(warrantyInput, out int warranty))
+                            {
+                                Console.WriteLine("Invalid Warranty Months input.");
+                                break;
+                            }
 
-            Console.WriteLine("\nAfter 10% Price Increase:");
-            foreach (var p in mixed)
-                Console.WriteLine($"{p.Name} - ₹{p.Price}");
+                            repository.AddProduct(new ElectronicProduct
+                            {
+                                Id = id,
+                                Name = name,
+                                Price = price,
+                                Brand = brand,
+                                WarrantyMonths = warranty
+                            });
 
-            Console.WriteLine("\nTotal Inventory Value After Update: ₹" +
-                mixed.Sum(p => p.Price));
+                            Console.WriteLine("Product added successfully");
+                            break;
+
+                        case "2":
+                            foreach (var p in repository.GetAllProducts())
+                                Console.WriteLine($"{p.Id} - {p.Name} - {p.Price}");
+                            break;
+
+                        case "3":
+                            Console.Write("Enter brand: ");
+                            string? searchBrandInput = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(searchBrandInput))
+                            {
+                                Console.WriteLine("Invalid Brand input.");
+                                break;
+                            }
+                            string searchBrand = searchBrandInput;
+
+                            var results = repository.FindProducts(p => p.Brand == searchBrand);
+                            foreach (var p in results)
+                                Console.WriteLine($"{p.Name} - {p.Price}");
+                            break;
+
+                        case "4":
+                            manager.ProcessProducts(repository.GetAllProducts());
+                            break;
+
+                        case "5":
+                            manager.UpdatePrices(
+                                repository.GetAllProducts(),
+                                p => p.Price * 1.10m
+                            );
+                            Console.WriteLine("Prices updated");
+                            break;
+
+                        case "6":
+                            Console.WriteLine("Total Value: " +
+                                repository.CalculateTotalValue());
+                            break;
+
+                        case "7":
+                            exit = true;
+                            break;
+
+                        default:
+                            Console.WriteLine("Invalid option");
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                }
+            }
         }
     }
 }
