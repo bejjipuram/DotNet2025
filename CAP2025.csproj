@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <StartupObject>CAP2025.Day_41_M1Practice.EmailEx</StartupObject>
+    <StartupObject>CAP2025.Day_41_M1Practice.PracticePrograms</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
