@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <StartupObject>CAP2025.Day_42_M1Practice.SmartBank.ClassMain</StartupObject>
+    <StartupObject>CAP2025.Day_43_ADOdotNet.SqlAdapterExample2</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
