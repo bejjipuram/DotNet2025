@@ -30,9 +30,13 @@ namespace CAP2025.Day_43_ADOdotNet
 
                 //Updation
                 LocalTable.Rows[0]["Salary"] = 90000;
+                LocalTable.Rows[0]["FullName"] = "Viswa";
 
                 //Deletion
-                LocalTable.Rows[1].Delete();
+                LocalTable.Rows[2].Delete();
+
+                //AcceptChanges
+                LocalDataSet.AcceptChanges();
 
                 //Pushing changes into db
                 adapter.Update(LocalDataSet, "EmployeesLocal");
