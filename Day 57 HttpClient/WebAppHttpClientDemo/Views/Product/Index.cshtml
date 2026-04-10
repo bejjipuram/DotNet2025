@@ -1,0 +1,56 @@
+﻿@model List<WebAppHttpClientDemo.Models.Product>
+
+<h2>Products</h2>
+
+<a asp-action="Create" class="btn btn-primary">Add Product</a>
+
+@if (TempData["ApiResponse"] != null)
+{
+    <div style="background-color:lightgreen;padding:10px;margin-top:10px;">
+        <strong>API Response:</strong>
+        <pre>@TempData["ApiResponse"]</pre>
+    </div>
+}
+
+<table border="1" class="table">
+    <thead>
+        <tr>
+            <th>Image</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Rating</th>
+            <th>Stock</th>
+            <th>Brand</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        @if (Model != null)
+        {
+            foreach (var product in Model)
+            {
+                <tr>
+                    <td>
+                        <img src="@product.Thumbnail" width="80" />
+                    </td>
+
+                    <td>@product.Title</td>
+
+                    <td>@product.Category</td>
+
+                    <td>$@product.Price</td>
+
+                    <td>@product.Rating</td>
+
+                    <td>@product.Stock</td>
+
+                    <td>@product.Brand</td>
+                </tr>
+            }
+        }
+
+    </tbody>
+
+</table>

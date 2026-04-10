@@ -1,0 +1,6 @@
+*.zip
+.vs/
+bin/
+obj/
+*.csproj
+*.slnx

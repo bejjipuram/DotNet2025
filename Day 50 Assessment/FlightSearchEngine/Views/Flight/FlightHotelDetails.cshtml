@@ -1,0 +1,22 @@
+@model FlightSearchEngine.Models.FlightHotelResult
+
+@{
+    ViewData["Title"] = "Flight + Hotel Details";
+}
+
+<h2>Flight + Hotel Details</h2>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">@Model.FlightName</h5>
+        <p class="card-text"><strong>Flight ID:</strong> @Model.FlightId</p>
+        <p class="card-text"><strong>Source:</strong> @Model.Source</p>
+        <p class="card-text"><strong>Destination:</strong> @Model.Destination</p>
+        <p class="card-text"><strong>Hotel:</strong> @Model.HotelName</p>
+        <p class="card-text"><strong>Total Cost:</strong> @Model.TotalCost.ToString("C")</p>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-controller="Flight" asp-action="Index" class="btn btn-secondary">Back to Search</a>
+</div>

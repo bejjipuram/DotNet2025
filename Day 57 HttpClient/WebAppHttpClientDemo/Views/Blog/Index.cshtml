@@ -1,0 +1,28 @@
+﻿@model List<WebAppHttpClientDemo.Models.Post>
+@if (TempData["ApiResponse"] != null)
+{
+    <div>
+        <strong>API Response:</strong>
+        <p>@TempData["ApiResponse"]</p>
+    </div>
+}
+
+<h2>Posts</h2>
+
+<table border="1">
+    <tr>
+        <th>Id</th>
+        <th>Title</th>
+        <th>Body</th>
+    </tr>
+
+    @foreach (var post in Model)
+    {
+        <tr>
+            <td>@post.Id</td>
+            <td>@post.Title</td>
+            <td>@post.Body</td>
+        </tr>
+    }
+
+</table>

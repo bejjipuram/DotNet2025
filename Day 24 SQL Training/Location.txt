@@ -1,0 +1,1 @@
+Visit the following link for the SQL DAY-1 Practice file. Link: https://github.com/bejjipuram/SQLTraining/blob/main/Day%2001%20SQL%20Basics.sql

@@ -1,0 +1,62 @@
+﻿@* @model List<WebApplicationDemo1.Models.Employee> *@
+@model IEnumerable<string>
+@if (TempData["ActionMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["ActionMessage"]
+    </div>
+}
+<h2>Employee List</h2>
+<a asp-action="Create" class="btn btn-primary">Add Employee</a>
+<table class=" table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Salary</th>
+            <th>Phone</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var emp in Model)
+        {
+            <tr>
+                <td>@emp.Id</td>
+                <td>@emp.Name</td>
+                <td>
+                    @{
+                        var departments = ViewBag.Departments as List<WebApplicationDemo1.Models.Department>;
+                        var dept = departments.FirstOrDefault(d => d.Id == emp.DepartmentId);
+                    }
+                    @dept?.Name
+                </td>
+                <td>@emp.Salary</td>
+                <td>@emp.Phone</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@emp.Id" class=" btn btn-warning btn-sm">Edit</a>
+                    <form asp-action="Delete" asp-route-id="@emp.Id" method="post" onsubmit="return confirm('Are you sure that you want to delete @emp.Name?');" style="display:inline;">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            Delete
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (TempData["ActionMessage"] != null)
+{
+    <div class="alert alert-info mt-4">
+        <strong>Last Action: </strong>@TempData["ActionMessage"]
+    </div>
+}
+
+<ul>
+    @foreach(var item in Model)
+    {
+        <li>@item</li>
+    }
+</ul>

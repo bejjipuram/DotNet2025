@@ -1,0 +1,18 @@
+﻿@model WebAppHttpClientDemo.Models.Post
+
+<h2>Create Post</h2>
+
+<form asp-action="Create" method="post">
+
+    <label>User Id</label>
+    <input asp-for="UserId" />
+
+    <label>Title</label>
+    <input asp-for="Title" />
+
+    <label>Body</label>
+    <textarea asp-for="Body"></textarea>
+
+    <button type="submit">Submit</button>
+
+</form>
